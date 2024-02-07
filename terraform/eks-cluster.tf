@@ -18,7 +18,8 @@ module "eks" {
     one = {
       name = "eks-node-group-1"
 
-      instance_types = ["t3.large"]
+      instance_types = ["t3.medium"]
+      capacity_type  = "ON_DEMAND"
 
       min_size     = 1
       max_size     = 3
