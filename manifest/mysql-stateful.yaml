@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: mysql-svc-headless
+    labels:
+        app: mysql
+spec:
+    ports:
+        - port: 3306
+          targetPort: 3306
+    clusterIP: None
+    selector:
+        app: mysql
+        tier: mysql
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+    name: mysql-pv-claim
+    labels:
+        app: wordpress
+
+spec:
+    accessModes:
+        - ReadWriteOnce
+    resources:
+        requests:
+            storage: 20Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+    name: mysql
+spec:
+    selector:
+        matchLabels:
+            app: mysql
+            tier: mysql
+    serviceName: "mysql"
+    replicas: 2
+    minReadySeconds: 10
+    template:
+        metadata:
+            labels:
+                app: mysql
+                tier: mysql
+        spec:
+            containers:
+                - image: mysql:5.6
+                  name: mysql
+                  readinessProbe:
+                      tcpSocket:
+                          port: 3306
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                  livenessProbe:
+                      tcpSocket:
+                          port: 3306
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                  env:
+                      - name: MYSQL_ROOT_PASSWORD
+                        valueFrom:
+                            secretKeyRef:
+                                name: mysql-pass
+                                key: password
+                  ports:
+                      - containerPort: 3306
+                        name: mysql
+                  volumeMounts:
+                      - name: mysql-persistent-storage
+                        mountPath: /var/lib/mysql
+            volumes:
+                - name: mysql-persistent-storage
+                  persistentVolumeClaim:
+                      claimName: mysql-pv-claim
